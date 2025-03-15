@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
+import { Document } from 'mongoose';
 import { BaseService } from '../services/base.service';
 import { BaseEntity, CreateEntity, UpdateEntity } from '../interfaces/entity.interface';
 
-export abstract class BaseController<T extends BaseEntity> {
-  constructor(protected readonly service: BaseService<T>) {}
+export abstract class BaseController<T extends BaseEntity, D extends Document = Document> {
+  constructor(protected readonly service: BaseService<T, D>) {}
 
   protected async handleRequest(
     req: Request,

@@ -1,51 +1,56 @@
 import { BaseService } from './base.service';
-import { Comment, CreateCommentRequest, UpdateCommentRequest } from '../interfaces/comment.interface';
 import { CommentRepository } from '../repositories/comment.repository';
+import { Comment, CommentResponse, CreateCommentRequest } from '../interfaces/comment.interface';
 import { NotFoundError } from '../utils/errors';
 import { CommentDocument } from '../models/comment.model';
 import { Mapper } from '../utils/mapper.util';
 
-export class CommentService extends BaseService<Comment, CommentDocument> {
+export class CommentService extends BaseService<Comment> {
   constructor(private readonly commentRepository: CommentRepository) {
-    super(commentRepository);
+    super(commentRepository as any);
   }
 
-  async findByFeature(featureId: string): Promise<Comment[]> {
-    const docs = await this.commentRepository.findByFeature(featureId);
-    return docs.map(doc => Mapper.toEntity<Comment>(doc));
+  async findByFeature(featureId: string): Promise<CommentResponse[]> {
+    const comments = await this.commentRepository.findByFeature(featureId);
+    return comments.map(comment => this.formatCommentResponse(Mapper.toEntity<Comment>(comment)));
   }
 
-  async findByUser(userId: string): Promise<Comment[]> {
-    const docs = await this.commentRepository.findByUser(userId);
-    return docs.map(doc => Mapper.toEntity<Comment>(doc));
+  async findByUser(userId: string): Promise<CommentResponse[]> {
+    const comments = await this.commentRepository.findByUser(userId);
+    return comments.map(comment => this.formatCommentResponse(Mapper.toEntity<Comment>(comment)));
   }
 
-  async toggleSolution(commentId: string): Promise<Comment> {
-    const doc = await this.commentRepository.toggleSolution(commentId);
-    if (!doc) {
-      throw new NotFoundError(`Comment with id ${commentId} not found`);
+  async toggleSolution(id: string): Promise<CommentResponse> {
+    const comment = await this.findById(id);
+    const updatedComment = await this.update(id, { isApprovedSolution: !comment.isApprovedSolution });
+    return this.formatCommentResponse(updatedComment);
+  }
+
+  async toggleLike(id: string, userId: string): Promise<CommentResponse> {
+    const comment = await this.commentRepository.toggleLike(id, userId);
+    if (!comment) {
+      throw new NotFoundError('Comment not found');
     }
-    return Mapper.toEntity<Comment>(doc);
+    return this.formatCommentResponse(Mapper.toEntity<Comment>(comment));
   }
 
-  async toggleLike(commentId: string, userId: string): Promise<Comment> {
-    const doc = await this.commentRepository.toggleLike(commentId, userId);
-    if (!doc) {
-      throw new NotFoundError(`Comment with id ${commentId} not found`);
-    }
-    return Mapper.toEntity<Comment>(doc);
+  async createComment(data: CreateCommentRequest): Promise<CommentResponse> {
+    const comment = await this.commentRepository.createComment(data);
+    return this.formatCommentResponse(Mapper.toEntity<Comment>(comment));
   }
 
-  override async create(data: CreateCommentRequest): Promise<Comment> {
-    const doc = await this.commentRepository.createComment(data);
-    return Mapper.toEntity<Comment>(doc);
-  }
-
-  override async update(id: string, data: UpdateCommentRequest): Promise<Comment> {
-    const doc = await this.commentRepository.update(id, data);
-    if (!doc) {
-      throw new NotFoundError(`Comment with id ${id} not found`);
-    }
-    return Mapper.toEntity<Comment>(doc);
+  private formatCommentResponse(comment: Comment): CommentResponse {
+    return {
+      id: comment.id,
+      content: comment.content,
+      isApprovedSolution: comment.isApprovedSolution,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      featureId: comment.featureId.toString(),
+      userId: comment.userId.toString(),
+      parentCommentId: comment.parentCommentId?.toString(),
+      likes: comment.likes.map(id => id.toString()),
+      likeCount: comment.likes.length
+    };
   }
 } 

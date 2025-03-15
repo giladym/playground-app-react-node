@@ -4,8 +4,8 @@ import { BaseEntity, CreateEntity, UpdateEntity } from '../interfaces/entity.int
 import { IBaseService } from '../interfaces/service.interface';
 import { Mapper } from '../utils/mapper.util';
 
-export abstract class BaseService<T extends BaseEntity, D extends Document = Document> implements IBaseService<T> {
-  constructor(protected readonly repository: BaseRepository<D>) {}
+export abstract class BaseService<T extends BaseEntity> implements IBaseService<T> {
+  constructor(protected readonly repository: BaseRepository<Document>) {}
 
   async findById(id: string): Promise<T> {
     const doc = await this.repository.findById(id);
@@ -13,17 +13,17 @@ export abstract class BaseService<T extends BaseEntity, D extends Document = Doc
   }
 
   async find(filter: Partial<T> = {}): Promise<T[]> {
-    const docs = await this.repository.find(Mapper.toDocument(filter));
+    const docs = await this.repository.find(filter as any);
     return docs.map(doc => Mapper.toEntity<T>(doc));
   }
 
   async create(data: CreateEntity<T>): Promise<T> {
-    const doc = await this.repository.create(data);
+    const doc = await this.repository.create(data as any);
     return Mapper.toEntity<T>(doc);
   }
 
   async update(id: string, data: UpdateEntity<T>): Promise<T> {
-    const doc = await this.repository.update(id, Mapper.toDocument(data));
+    const doc = await this.repository.update(id, data as any);
     return Mapper.toEntity<T>(doc);
   }
 
@@ -32,12 +32,12 @@ export abstract class BaseService<T extends BaseEntity, D extends Document = Doc
   }
 
   async findOne(filter: Partial<T>): Promise<T | null> {
-    const doc = await this.repository.findOne(Mapper.toDocument(filter));
+    const doc = await this.repository.findOne(filter as any);
     return doc ? Mapper.toEntity<T>(doc) : null;
   }
 
   async exists(filter: Partial<T>): Promise<boolean> {
-    return this.repository.exists(Mapper.toDocument(filter));
+    return this.repository.exists(filter as any);
   }
 
   protected async executeWithErrorHandling<R>(
